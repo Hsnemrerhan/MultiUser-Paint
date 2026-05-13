@@ -145,8 +145,8 @@ public final class PaintClientApp extends JFrame {
         });
 
         JScrollPane sp = UiTheme.wrapSidebarList(canvasList);
-        sp.setPreferredSize(new Dimension(260, 120));
-        sp.setMaximumSize(new Dimension(Short.MAX_VALUE, 140));
+        sp.setPreferredSize(new Dimension(260, 260));
+        sp.setMaximumSize(new Dimension(Short.MAX_VALUE, 320));
         sp.setAlignmentX(Component.LEFT_ALIGNMENT);
         col.add(refresh);
         col.add(Box.createVerticalStrut(6));
@@ -198,6 +198,7 @@ public final class PaintClientApp extends JFrame {
         JSpinner brush = new JSpinner(new SpinnerNumberModel(3, 1, 80, 1));
         brush.setAlignmentX(Component.LEFT_ALIGNMENT);
         brush.setMaximumSize(new Dimension(Short.MAX_VALUE, 34));
+        brush.addChangeListener(e -> canvas.setBrushSize(((Number) brush.getValue()).intValue()));
         JComponent editor = brush.getEditor();
         if (editor instanceof JSpinner.DefaultEditor se) {
             se.getTextField().setBackground(UiTheme.BG_SIDEBAR_ELEVATED);
