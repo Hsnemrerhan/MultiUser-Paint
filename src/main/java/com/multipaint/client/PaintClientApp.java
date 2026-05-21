@@ -14,9 +14,9 @@ public final class PaintClientApp extends JFrame {
     private final JTextField hostField = new JTextField("127.0.0.1", 10);
     private final JTextField portField = new JTextField("9100", 5);
     private final JTextField userField = new JTextField("Kullanici", 10);
-    private final JTextField newCanvasField = new JTextField(14);
-    private final CanvasPanel canvas = new CanvasPanel(net);
+    private final JTextField newCanvasField = UiTheme.placeholderField("Yeni canvas isminiz", 14);    private final CanvasPanel canvas = new CanvasPanel(net);
     private final JLabel status = new JLabel("Hazir");
+    private final JPanel colorSwatch = new JPanel();
     private volatile boolean joinedRoom;
 
     public PaintClientApp() {
@@ -27,13 +27,13 @@ public final class PaintClientApp extends JFrame {
         setLayout(new BorderLayout(0, 0));
 
         JPanel top = buildTopBar();
-        JPanel left = buildSidebar();
+        JScrollPane sidebarScroll = UiTheme.wrapSidebar(buildSidebar());
 
         JScrollPane scroll = UiTheme.wrapCanvas(canvas);
         scroll.setPreferredSize(new Dimension(920, 620));
 
         add(top, BorderLayout.NORTH);
-        add(left, BorderLayout.WEST);
+        add(sidebarScroll, BorderLayout.WEST);
         add(scroll, BorderLayout.CENTER);
         add(buildStatusBar(), BorderLayout.SOUTH);
         pack();
@@ -42,33 +42,31 @@ public final class PaintClientApp extends JFrame {
     }
 
     private JPanel buildTopBar() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 10));
-        p.setBackground(Color.WHITE);
+        JPanel p = new JPanel(new BorderLayout(18, 0));
+        p.setBackground(UiTheme.BG_PANEL);
         p.setBorder(BorderFactory.createCompoundBorder(
                 new MatteBorder(0, 0, 1, 0, UiTheme.BORDER_SUBTLE),
-                new EmptyBorder(4, 16, 4, 16)));
+                new EmptyBorder(10, 18, 10, 18)));
 
         JLabel logo = new JLabel("MultiUser Paint");
         logo.setFont(logo.getFont().deriveFont(Font.BOLD, 16f));
-        logo.setForeground(new Color(0x1e, 0x29, 0x3b));
-        p.add(logo);
-
-        p.add(new JSeparator(SwingConstants.VERTICAL) {{
-            setPreferredSize(new Dimension(1, 28));
-        }});
+        logo.setForeground(UiTheme.TEXT);
+        p.add(logo, BorderLayout.WEST);
 
         styleTopField(hostField);
         styleTopField(portField);
         styleTopField(userField);
 
-        p.add(wrapField("Sunucu", hostField));
-        p.add(wrapField("Port", portField));
-        p.add(wrapField("Kullanici", userField));
+        JPanel connection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        connection.setOpaque(false);
+        connection.add(wrapField("Sunucu", hostField));
+        connection.add(wrapField("Port", portField));
+        connection.add(wrapField("Kullanici", userField));
 
         JButton connect = UiTheme.primaryButton("Baglan");
         connect.addActionListener(e -> connect());
-        p.add(Box.createHorizontalStrut(4));
-        p.add(connect);
+        connection.add(connect);
+        p.add(connection, BorderLayout.CENTER);
         return p;
     }
 
@@ -88,24 +86,21 @@ public final class PaintClientApp extends JFrame {
                 BorderFactory.createLineBorder(UiTheme.BORDER_SUBTLE),
                 new EmptyBorder(6, 8, 6, 8)));
         f.setBackground(Color.WHITE);
-        f.setForeground(new Color(0x1e, 0x29, 0x3b));
+        f.setForeground(UiTheme.TEXT);
     }
 
     private JPanel buildSidebar() {
-        JPanel col = new JPanel();
-        col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
-        col.setBackground(UiTheme.BG_SIDEBAR);
-        col.setBorder(new EmptyBorder(16, 16, 16, 16));
-        col.setPreferredSize(new Dimension(300, 0));
+        JPanel col = UiTheme.createSidebarPanel();
 
-        col.add(UiTheme.sectionTitle("TUVALLAR"));
-        col.add(Box.createVerticalStrut(6));
+        JPanel canvases = UiTheme.panelBlock();
+        canvases.add(UiTheme.sectionTitle("TUVALLAR"));
+        canvases.add(Box.createVerticalStrut(8));
 
         UiTheme.styleSidebarField(newCanvasField);
         newCanvasField.setMaximumSize(new Dimension(Short.MAX_VALUE, 34));
         newCanvasField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        col.add(newCanvasField);
-        col.add(Box.createVerticalStrut(8));
+        canvases.add(newCanvasField);
+        canvases.add(Box.createVerticalStrut(8));
 
         JButton refresh = UiTheme.ghostButton("Listeyi yenile");
         refresh.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -127,8 +122,8 @@ public final class PaintClientApp extends JFrame {
 
         canvasList.setBackground(UiTheme.BG_SIDEBAR_ELEVATED);
         canvasList.setForeground(UiTheme.TEXT_ON_SIDEBAR);
-        canvasList.setSelectionBackground(new Color(0x31, 0x31, 0x45));
-        canvasList.setSelectionForeground(Color.WHITE);
+        canvasList.setSelectionBackground(UiTheme.ACCENT_SOFT);
+        canvasList.setSelectionForeground(UiTheme.ACCENT_HOVER);
         canvasList.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         canvasList.setCellRenderer(new DefaultListCellRenderer() {
             @Override
@@ -145,55 +140,91 @@ public final class PaintClientApp extends JFrame {
         });
 
         JScrollPane sp = UiTheme.wrapSidebarList(canvasList);
-        sp.setPreferredSize(new Dimension(260, 260));
-        sp.setMaximumSize(new Dimension(Short.MAX_VALUE, 320));
+        sp.setPreferredSize(new Dimension(280, 120));
+        sp.setMinimumSize(new Dimension(280, 280));
+        sp.setMaximumSize(new Dimension(Short.MAX_VALUE, 420));
         sp.setAlignmentX(Component.LEFT_ALIGNMENT);
-        col.add(refresh);
-        col.add(Box.createVerticalStrut(6));
-        col.add(create);
-        col.add(Box.createVerticalStrut(8));
-        col.add(sp);
+        canvases.add(refresh);
+        canvases.add(Box.createVerticalStrut(6));
+        canvases.add(create);
+        canvases.add(Box.createVerticalStrut(8));
+        canvases.add(sp);
 
         JButton join = UiTheme.primaryButton("Secili tuvala katil");
         join.setAlignmentX(Component.LEFT_ALIGNMENT);
         join.setMaximumSize(new Dimension(Short.MAX_VALUE, 40));
         join.addActionListener(e -> joinSelected());
-        col.add(Box.createVerticalStrut(10));
-        col.add(join);
+        canvases.add(Box.createVerticalStrut(10));
+        canvases.add(join);
+        col.add(canvases);
 
-        col.add(Box.createVerticalStrut(22));
-        col.add(UiTheme.sectionTitle("ARACLAR"));
-        col.add(Box.createVerticalStrut(8));
+        col.add(Box.createVerticalStrut(14));
+        JPanel tools = UiTheme.panelBlock();
+        tools.add(UiTheme.sectionTitle("ARACLAR"));
+        tools.add(Box.createVerticalStrut(10));
 
-        JToggleButton pen = new JToggleButton("Kalem", true);
-        JToggleButton eraser = new JToggleButton("Silgi");
-        JToggleButton sel = new JToggleButton("Secim");
+        JToggleButton pen = UiTheme.iconToggleTool("✎", "Kalem");
+        JToggleButton eraser = UiTheme.iconToggleTool("⌫", "Silgi");
+        JToggleButton sel = UiTheme.iconToggleTool("▣", "Secim");
+
         ButtonGroup g = new ButtonGroup();
         g.add(pen);
         g.add(eraser);
         g.add(sel);
-        UiTheme.styleToggleTool(pen);
-        UiTheme.styleToggleTool(eraser);
-        UiTheme.styleToggleTool(sel);
-        pen.setBackground(UiTheme.ACCENT);
-        pen.setForeground(Color.WHITE);
-        eraser.setBackground(UiTheme.BG_SIDEBAR_ELEVATED);
-        eraser.setForeground(UiTheme.TEXT_ON_SIDEBAR);
-        sel.setBackground(UiTheme.BG_SIDEBAR_ELEVATED);
-        sel.setForeground(UiTheme.TEXT_ON_SIDEBAR);
-        pen.addActionListener(e -> canvas.setTool(CanvasPanel.Tool.PEN));
-        eraser.addActionListener(e -> canvas.setTool(CanvasPanel.Tool.ERASER));
-        sel.addActionListener(e -> canvas.setTool(CanvasPanel.Tool.SELECT));
 
+        pen.setSelected(true);
+
+        pen.addActionListener(e -> {
+            canvas.setTool(CanvasPanel.Tool.PEN);
+            status.setText("Arac secildi: Kalem");
+        });
+
+        eraser.addActionListener(e -> {
+            canvas.setTool(CanvasPanel.Tool.ERASER);
+            status.setText("Arac secildi: Silgi");
+        });
+
+        sel.addActionListener(e -> {
+            canvas.setTool(CanvasPanel.Tool.SELECT);
+            status.setText("Arac secildi: Secim");
+        });
+
+        JPanel toolGrid = new JPanel(new GridLayout(1, 3, 8, 0));
+        toolGrid.setOpaque(false);
+        toolGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        toolGrid.setMaximumSize(new Dimension(Short.MAX_VALUE, 46));
+        toolGrid.add(pen);
+        toolGrid.add(eraser);
+        toolGrid.add(sel);
+        tools.add(toolGrid);
+
+        JPanel toolNames = new JPanel(new GridLayout(1, 3, 8, 0));
+        toolNames.setOpaque(false);
+        toolNames.setAlignmentX(Component.LEFT_ALIGNMENT);
+        toolNames.setMaximumSize(new Dimension(Short.MAX_VALUE, 18));
+        toolNames.add(UiTheme.smallCenterLabel("Kalem"));
+        toolNames.add(UiTheme.smallCenterLabel("Silgi"));
+        toolNames.add(UiTheme.smallCenterLabel("Secim"));
+        tools.add(Box.createVerticalStrut(4));
+        tools.add(toolNames);
+        tools.add(Box.createVerticalStrut(12));
+        JPanel colorRow = new JPanel(new BorderLayout(8, 0));
+        colorRow.setOpaque(false);
+        colorRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        colorRow.setMaximumSize(new Dimension(Short.MAX_VALUE, 38));
+        colorSwatch.setBackground(Color.BLACK);
+        colorSwatch.setPreferredSize(new Dimension(38, 34));
+        colorSwatch.setBorder(BorderFactory.createLineBorder(UiTheme.BORDER_SUBTLE));
+        colorRow.add(colorSwatch, BorderLayout.WEST);
         JButton pickColor = UiTheme.ghostButton("Renk sec...");
-        pickColor.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pickColor.setMaximumSize(new Dimension(Short.MAX_VALUE, 36));
         pickColor.addActionListener(e -> {
             Color c = JColorChooser.showDialog(this, "Renk", Color.BLACK);
             if (c != null) {
                 canvas.setPenColor(c);
+                colorSwatch.setBackground(c);
             }
         });
+        colorRow.add(pickColor, BorderLayout.CENTER);
 
         JSpinner brush = new JSpinner(new SpinnerNumberModel(3, 1, 80, 1));
         brush.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -210,6 +241,7 @@ public final class PaintClientApp extends JFrame {
         JButton cut = UiTheme.ghostButton("Kes");
         JButton paste = UiTheme.ghostButton("Yapistir");
         JButton clear = UiTheme.ghostButton("Tuvali temizle");
+        clear.setForeground(UiTheme.DANGER);
         JButton savePng = UiTheme.ghostButton("PNG kaydet");
         for (JButton b : new JButton[]{copy, cut, paste, clear, savePng}) {
             b.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -226,25 +258,22 @@ public final class PaintClientApp extends JFrame {
         });
         savePng.addActionListener(e -> canvas.savePng(this));
 
-        addFullWidth(col, pen);
-        addFullWidth(col, eraser);
-        addFullWidth(col, sel);
-        col.add(Box.createVerticalStrut(6));
-        addFullWidth(col, pickColor);
-        col.add(UiTheme.mutedLabel("Firca kalinligi"));
-        col.add(Box.createVerticalStrut(4));
-        addFullWidth(col, brush);
-        col.add(Box.createVerticalStrut(10));
-        addFullWidth(col, copy);
-        addFullWidth(col, cut);
-        addFullWidth(col, paste);
-        addFullWidth(col, clear);
-        addFullWidth(col, savePng);
-        col.add(Box.createVerticalStrut(12));
-        JLabel hint = new JLabel("<html><div style='color:#64748b;font-size:11px'>Yapistirma hedefi:<br/>tuvalde sag tik</div></html>");
+        tools.add(colorRow);
+        tools.add(Box.createVerticalStrut(10));
+        tools.add(UiTheme.mutedLabel("Firca kalinligi"));
+        tools.add(Box.createVerticalStrut(4));
+        addFullWidth(tools, brush);
+        tools.add(Box.createVerticalStrut(4));
+        addFullWidth(tools, copy);
+        addFullWidth(tools, cut);
+        addFullWidth(tools, paste);
+        addFullWidth(tools, clear);
+        addFullWidth(tools, savePng);
+        tools.add(Box.createVerticalStrut(8));
+        JLabel hint = new JLabel("<html><div style='color:#64748b;font-size:11px'>Yapistirma hedefi: tuvalde sag tik</div></html>");
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
-        col.add(hint);
-        col.add(Box.createVerticalGlue());
+        tools.add(hint);
+        col.add(tools);
         return col;
     }
 
@@ -258,8 +287,10 @@ public final class PaintClientApp extends JFrame {
     private JPanel buildStatusBar() {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(UiTheme.STATUS_BG);
-        bar.setBorder(new EmptyBorder(8, 16, 8, 16));
-        status.setForeground(new Color(0x94, 0xa3, 0xb8));
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                new MatteBorder(1, 0, 0, 0, UiTheme.BORDER_SUBTLE),
+                new EmptyBorder(8, 16, 8, 16)));
+        status.setForeground(UiTheme.TEXT_MUTED);
         status.setFont(status.getFont().deriveFont(12f));
         bar.add(status, BorderLayout.WEST);
         return bar;
@@ -280,7 +311,7 @@ public final class PaintClientApp extends JFrame {
             joinedRoom = false;
             canvas.setJoined(false);
             startReader();
-            status.setText("Baglandi — " + host + ":" + port + " · " + user);
+            status.setText("Baglandi - " + host + ":" + port + " - " + user);
             net.fileListRequest();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Baglanti hatasi", JOptionPane.ERROR_MESSAGE);
@@ -320,7 +351,7 @@ public final class PaintClientApp extends JFrame {
                 canvas.clearLocalOnly();
                 String[] p = line.split("\\|", 2);
                 String room = p.length > 1 ? p[1] : "";
-                status.setText("Tuval: " + room + " — cizmeye baslayabilirsiniz");
+                status.setText("Tuval: " + room + " - cizmeye baslayabilirsiniz");
                 return;
             }
             if (line.startsWith(Protocol.DRAW_PATH)
