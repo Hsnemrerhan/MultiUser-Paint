@@ -1,13 +1,19 @@
-Bu uygulama TCP tabanlı çok kullanıcılı bir çizim uygulamasıdır. 
+Bu uygulama **gRPC** tabanlı çok kullanıcılı bir çizim uygulamasıdır.
 
+## Gereksinimler
 
-Uygulamayı kullanmak için gerekli olanlar:
+- JDK 17+
+- **Maven** (protobuf + gRPC kod üretimi ve bağımlılıklar için)
 
--> JDK 17+
+## Çalıştırma
 
+1. `1-derle.bat` — `mvn compile` + bağımlılıkları `target/lib` altına kopyalar
+2. `2-sunucu.bat` — gRPC sunucusu (port **9100**)
+3. `3-istemci.bat` — istemci (birden fazla açılabilir)
 
-Uygulamayı çalıştırmak için:
+## İletişim
 
-1- Ana dizindeki "1-derle.bat" dosyasını çalıştırın. Bu sizin için uygulamayı derleyecektir. 
-2- Sunucuyu çalıştırmak için "2-sunucu.bat" dosyasını çalıştırabilirsiniz.
-3- İstemciyi çalıştırmak için "3-istemci.bat" dosyasını çalıştırabilirsiniz (Birden fazla istemci aynı anda çalıştırılabilir). 
+- Tanım: `src/main/proto/paint.proto`
+- Servis: `PaintService.Session` — **çift yönlü stream** (`stream Envelope` ↔ `stream Envelope`)
+- Her `Envelope.line` alanı mevcut metin protokolünü taşır (`HELLO|Ahmet`, `DRAW_PATH|...`)
+- Tuval mantığı (`CanvasRoom`, `DrawOps`, `CanvasPanel`) değişmedi

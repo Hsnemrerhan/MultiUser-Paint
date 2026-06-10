@@ -2,65 +2,52 @@ package com.multipaint.server;
 
 import com.multipaint.protocol.Protocol;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-public final class ClientSession implements Runnable {
-    private final Socket socket;
+/**
+ * Tek istemci oturumu: protokol komutlarini isler.
+ * Mesaj gonderimi {@link MessageSink} uzerinden (or. gRPC stream).
+ */
+public final class ClientSession {
+
+    /** Satir protokolunu istemciye iletir. */
+    @FunctionalInterface
+    public interface MessageSink {
+        void sendLine(String line);
+    }
+
     private final PaintServer server;
-    private final BufferedReader in;
-    private final PrintWriter out;
+    private final MessageSink sink;
     private volatile String username;
     private volatile CanvasRoom room;
 
-    public ClientSession(Socket socket, PaintServer server) throws IOException {
-        this.socket = socket;
+    public ClientSession(PaintServer server, MessageSink sink) {
         this.server = server;
-        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-        this.out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+        this.sink = sink;
     }
 
     public void sendLine(String line) {
-        synchronized (out) {
-            out.print(line);
-            out.print('\n');
-            out.flush();
-        }
+        sink.sendLine(line);
     }
 
     public void sendError(String msg) {
         sendLine(Protocol.ERROR + Protocol.SEP + msg);
     }
 
-    @Override
-    public void run() {
-        try {
-            String line;
-            while ((line = in.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty()) {
-                    continue;
-                }
-                handleLine(line);
-            }
-        } catch (Exception e) {
-            // baglanti koptu
-        } finally {
-            cleanup();
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-        }
+    /** Baglanti kapandiginda cagrilir. */
+    public void onDisconnect() {
+        cleanup();
     }
 
-    private void handleLine(String line) throws Exception {
+    public void handleLine(String line) throws Exception {
+        if (line == null || line.isEmpty()) {
+            return;
+        }
+        line = line.trim();
+        if (line.isEmpty()) {
+            return;
+        }
+
         String[] parts = line.split("\\|", 3);
         String cmd = parts[0];
         switch (cmd) {
@@ -94,9 +81,7 @@ public final class ClientSession implements Runnable {
                     sendError("Tuval adi | karakteri icermemeli");
                     return;
                 }
-                if (server.createRoom(name)) {
-                    // bos
-                } else {
+                if (!server.createRoom(name)) {
                     sendError("Canvas zaten var: " + name);
                 }
             }

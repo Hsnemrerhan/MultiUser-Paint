@@ -1,17 +1,19 @@
 package com.multipaint.server;
 
-import java.net.ServerSocket;
-import java.net.Socket;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public final class PaintServer {
     private final int port;
     private final Map<String, CanvasRoom> rooms = new ConcurrentHashMap<>();
-    private volatile boolean running;
+    private Server grpcServer;
 
     public PaintServer(int port) {
         this.port = port;
@@ -33,19 +35,30 @@ public final class PaintServer {
     }
 
     public void start() throws Exception {
-        running = true;
-        try (ServerSocket ss = new ServerSocket(port)) {
-            System.out.println("Paint sunucusu dinleniyor: " + port);
-            while (running) {
-                Socket s = ss.accept();
-                ClientSession session = new ClientSession(s, this);
-                new Thread(session, "client-" + s.getRemoteSocketAddress()).start();
-            }
+        grpcServer = ServerBuilder.forPort(port)
+                .addService(new PaintGrpcService(this))
+                .build()
+                .start();
+        System.out.println("gRPC sunucusu dinleniyor: " + port);
+        System.out.println("Durdurmak icin Ctrl+C");
+        grpcServer.awaitTermination();
+    }
+
+    public void stop() throws Exception {
+        if (grpcServer != null) {
+            grpcServer.shutdown().awaitTermination(5, TimeUnit.SECONDS);
         }
     }
 
     public static void main(String[] args) throws Exception {
         int p = args.length > 0 ? Integer.parseInt(args[0]) : 9100;
-        new PaintServer(p).start();
+        PaintServer server = new PaintServer(p);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                server.stop();
+            } catch (Exception ignored) {
+            }
+        }));
+        server.start();
     }
 }

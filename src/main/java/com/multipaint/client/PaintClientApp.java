@@ -307,11 +307,11 @@ public final class PaintClientApp extends JFrame {
             }
             net.close();
             net.connect(host, port);
-            net.hello(user);
             joinedRoom = false;
             canvas.setJoined(false);
             startReader();
-            status.setText("Baglandi - " + host + ":" + port + " - " + user);
+            net.hello(user);
+            status.setText("Baglandi (gRPC) - " + host + ":" + port + " - " + user);
             net.fileListRequest();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Baglanti hatasi", JOptionPane.ERROR_MESSAGE);

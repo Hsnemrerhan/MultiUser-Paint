@@ -11,9 +11,11 @@ if not exist "target\classes\com\multipaint\server\PaintServer.class" (
 set "PORT=9100"
 if not "%~1"=="" set "PORT=%~1"
 
-echo Sunucu baslatiliyor (port %PORT%)...
+set "CP=target\classes;target\lib\*"
+
+echo gRPC sunucusu baslatiliyor (port %PORT%)...
 echo Durdurmak icin bu pencerede Ctrl+C basin.
 echo.
-java -cp "target\classes" com.multipaint.server.PaintServer %PORT%
+java -cp "%CP%" com.multipaint.server.PaintServer %PORT%
 echo.
 pause

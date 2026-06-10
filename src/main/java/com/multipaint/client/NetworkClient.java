@@ -1,40 +1,73 @@
 package com.multipaint.client;
 
+import com.multipaint.grpc.Envelope;
+import com.multipaint.grpc.PaintServiceGrpc;
 import com.multipaint.protocol.Protocol;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.*;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Ham TCP: {@link Socket}, {@link BufferedReader}, {@link PrintWriter} — harici socket kutuphanesi yok.
+ * gRPC istemcisi: {@link PaintServiceGrpc#session} cift yonlu akis.
  */
 public final class NetworkClient implements Closeable {
-    private Socket socket;
-    private PrintWriter out;
-    private BufferedReader in;
-    private Thread readerThread;
-    private volatile boolean closed;
 
-    public void connect(String host, int port) throws IOException {
+    private ManagedChannel channel;
+    private StreamObserver<Envelope> requestStream;
+    private volatile boolean closed;
+    private Consumer<String> onLine;
+    private Consumer<Exception> onError;
+
+    public void connect(String host, int port) throws Exception {
         closeQuietly();
-        socket = new Socket(host, port);
-        out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
         closed = false;
+        channel = ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
+                .build();
+        PaintServiceGrpc.PaintServiceStub stub = PaintServiceGrpc.newStub(channel);
+
+        StreamObserver<Envelope> responseObserver = new StreamObserver<>() {
+            @Override
+            public void onNext(Envelope value) {
+                if (!closed && onLine != null && value != null) {
+                    String line = value.getLine().trim();
+                    if (!line.isEmpty()) {
+                        onLine.accept(line);
+                    }
+                }
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                if (!closed && onError != null) {
+                    onError.accept(new IOException(t.getMessage(), t));
+                }
+            }
+
+            @Override
+            public void onCompleted() {
+                if (!closed && onError != null) {
+                    onError.accept(new IOException("Sunucu akisi kapandi"));
+                }
+            }
+        };
+
+        requestStream = stub.session(responseObserver);
     }
 
     public void sendLine(String line) {
-        if (out == null) {
-            return;
-        }
-        synchronized (out) {
-            out.print(line);
-            out.print('\n');
-            out.flush();
+        if (requestStream != null && !closed) {
+            requestStream.onNext(Envelope.newBuilder().setLine(line).build());
         }
     }
 
@@ -71,36 +104,29 @@ public final class NetworkClient implements Closeable {
     }
 
     public void startReader(Consumer<String> onLine, Consumer<Exception> onError) {
-        if (in == null) {
-            return;
-        }
-        readerThread = new Thread(() -> {
-            try {
-                String line;
-                while (!closed && (line = in.readLine()) != null) {
-                    onLine.accept(line);
-                }
-            } catch (Exception e) {
-                if (!closed) {
-                    onError.accept(e);
-                }
-            }
-        }, "paint-net-read");
-        readerThread.setDaemon(true);
-        readerThread.start();
+        this.onLine = onLine;
+        this.onError = onError;
     }
 
     private void closeQuietly() {
         closed = true;
-        try {
-            if (socket != null) {
-                socket.close();
+        if (requestStream != null) {
+            try {
+                requestStream.onCompleted();
+            } catch (Exception ignored) {
             }
-        } catch (IOException ignored) {
+            requestStream = null;
         }
-        socket = null;
-        in = null;
-        out = null;
+        if (channel != null) {
+            channel.shutdown();
+            try {
+                channel.awaitTermination(3, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                channel.shutdownNow();
+            }
+            channel = null;
+        }
     }
 
     @Override
@@ -111,6 +137,6 @@ public final class NetworkClient implements Closeable {
     public static String encodePngBase64(BufferedImage img) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ImageIO.write(img, "png", bos);
-        return java.util.Base64.getEncoder().encodeToString(bos.toByteArray());
+        return Base64.getEncoder().encodeToString(bos.toByteArray());
     }
 }

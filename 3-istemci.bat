@@ -8,8 +8,10 @@ if not exist "target\classes\com\multipaint\client\PaintClientApp.class" (
     exit /b 1
 )
 
-echo Istemci aciliyor...
-java -cp "target\classes" com.multipaint.client.PaintClientApp
+set "CP=target\classes;target\lib\*"
+
+echo Istemci aciliyor (gRPC)...
+java -cp "%CP%" com.multipaint.client.PaintClientApp
 if errorlevel 1 (
     echo.
     echo [HATA] java calistirilamadi. JDK kurulu mu kontrol edin: java -version
