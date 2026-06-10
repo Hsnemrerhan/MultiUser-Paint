@@ -6,7 +6,6 @@ option java_multiple_files = true;
 option java_package = "com.multipaint.grpc";
 option java_outer_classname = "PaintProto";
 
-// Cift yonlu akis: her mesaj mevcut metin satir protokolunu tasir (ornek: HELLO|Ahmet)
 service PaintService {
   rpc Session (stream Envelope) returns (stream Envelope);
 }
